@@ -1,331 +1,200 @@
-from tkinter import messagebox
-from tkinter import ttk
-from tkinter import *
+import streamlit as st
 import mysql.connector
-con=mysql.connector.connect(host=" ",user=" ",password=" ",database=" ")
-check=0
+from mysql.connector import Error
+import pandas as pd
 
-def enter():
-    def addcar():
 
-        e1=ent1.get()
-        e2=ent2.get()
-        e3=ent3.get()
-        cur=con.cursor()
-        x='y'
-        cur.execute("insert into cars(car_id,brand,rent,available) values(%s,%s,%s,%s)",(e1,e2,e3,x))
+# Database connection
+def create_connection():
+    try:
+        con = mysql.connector.connect(
+            host="localhost",
+            user="root",
+            password="password",
+            database="rental_cars"
+        )
+        if con.is_connected():
+            return con
+    except Error as e:
+        st.error(f"Error connecting to MySQL database: {e}")
+        return None
+
+# Functions to interact with the database
+def add_car(con, car_id, brand, rent):
+    try:
+        cur = con.cursor()
+        cur.execute("INSERT INTO cars (car_id, brand, rent, available) VALUES (%s, %s, %s, 'y')", (car_id, brand, rent))
         con.commit()
-        carid.delete(0,END)
-        brand.delete(0,END)
-        price.delete(0,END)
-        messagebox.showinfo('success',"car inserted!")
-    #frame2add()
+        st.success("Car inserted successfully!")
+    except Error as e:
+        st.error(f"Error: {e}")
 
-#function for deleting a car
-    def delcar():
-        e1=ent1.get()
-        e2=ent2.get()
-        e3=ent3.get()
-        cur=con.cursor()
-        x='y'
-        cur.execute("delete from cars where car_id=%s and available=%s",(e1,x))
+def delete_car(con, car_id):
+    try:
+        cur = con.cursor()
+        cur.execute("DELETE FROM cars WHERE car_id = %s AND available = 'y'", (car_id,))
         con.commit()
-        carid.delete(0,END)
-        brand.delete(0,END)
-        price.delete(0,END)
-        messagebox.showinfo('success','car deleted!!')
+        st.success("Car deleted successfully!")
+    except Error as e:
+        st.error(f"Error: {e}")
 
-#creating the main window
-    root=Toplevel()
-    root.geometry("500x500")
-    root.title("DBMS PROJECT by PRASANNA,PRITISH,PREMKANNA")
+def get_available_cars(con):
+    try:
+        cur = con.cursor()
+        cur.execute("SELECT car_id, brand, rent FROM cars WHERE available = 'y'")
+        rows = cur.fetchall()
+        return rows
+    except Error as e:
+        st.error(f"Error: {e}")
+        return []
 
-    #creating a notebook for tabs(admin,book,return)
-    notebook=ttk.Notebook(root)
-    notebook.pack()
-
-    #creating 3 frames 
-    frame1=Frame(notebook,width=500,height=500)
-    frame2=Frame(notebook,width=500,height=500)  
-    frame3=Frame(notebook,width=500,height=500)
-
-    frame1.pack(fill="both",expand=1)
-    frame2.pack(fill="both",expand=1)
-    frame3.pack(fill="both",expand=1)
-
-    notebook.add(frame1,text="admin")
-    notebook.add(frame2,text="book")
-    notebook.add(frame3,text="return")
-
-    #notebook.hide(1)
-
-    # def show():
-    #    notebook.add(frame2,text="book")
-
-
-    ent1=IntVar()
-    ent2=StringVar()
-    ent3=IntVar()
-
-    #adding and droping car window
-    lab=Label(frame1,text="WELCOME TO CAR RENTAL SYSTEM").pack()
-
-    lab1=Label(frame1,text="CARID").place(x=150,y=50)
-    carid=Entry(frame1,textvariable=ent1)
-    carid.place(x=200,y=50)
-
-    lab2=Label(frame1,text="BRAND").place(x=150,y=80)
-    brand=Entry(frame1,textvariable=ent2)
-    brand.place(x=200,y=80)
-
-    lab3=Label(frame1,text="RENT").place(x=150,y=110)
-    price=Entry(frame1,textvariable=ent3)
-    price.place(x=200,y=110)
-
-    but1=Button(frame1,text="ADD CAR",command=addcar).place(x=200,y=200)
-    but2=Button(frame1,text="DROP CAR",command=delcar).place(x=300,y=200)
-
-    #butshow=Button(frame1,text="GO TO BOOK",command=show).place(x=250,y=400)
-    # def frame2add():
-    #displaying available cars
-    labf=Label(frame2,text="AVAILABLE CARS").pack()
-
-    treescroll=Frame(frame2)
-    treescroll.pack()
-
-    scroll=Scrollbar(frame2)
-    scroll.pack(side=RIGHT,fill=Y)
-    tree=ttk.Treeview(frame2,yscrollcommand=scroll.set) #yscrollcommand=scroll.set)
-    scroll.config(command=tree.yview)
-
-    #vsb=Scrollbar(root,orient="vertical")
-    #vsb.configure(command=tree.yview)
-    #tree.configure(yscrollcommand=vsb.set)
-    #vsb.pack(fill=Y,side=RIGHT)
-
-    tree['show']='headings'
-    s=ttk.Style(root)
-    s.theme_use("clam")
-    tree.pack()
-
-    tree['columns']=("car_id","brand","rent")
-    cur=con.cursor()
-    y='y'
-    cur.execute("select car_id,brand,rent from cars where available='y'")
-        #con.commit()
-        #cur.close()
-    tree.column("car_id",width=50,minwidth=50,anchor=CENTER)
-    tree.column("brand",width=100,minwidth=100,anchor=CENTER)
-    tree.column("rent",width=150,minwidth=150,anchor=CENTER)
-
-        #headings
-    tree.heading("car_id",text="carid",anchor=CENTER)
-    tree.heading("brand",text="brand",anchor=CENTER)
-    tree.heading("rent",text="rent",anchor=CENTER)
-
-    i=0
-    for row in cur:
-        tree.insert('',i,text='',values=(row[0],row[1],row[2]))
-        i+=1
-
-    con.commit()
-
-    #vsb=Scrollbar(root,orient="vertical")
-    #vsb.configure(command=tree.yview)
-    #tree.configure(yscrollcommand=vsb.set)
-    #vsb.pack(fill=Y,side=RIGHT)
-
-    ent4=IntVar()
-    ent5=StringVar()
-    ent6=StringVar()
-    ent7=StringVar()
-    ent8=StringVar()
-
-    #function to book a car
-    def bookcar():
-        a=ent4.get()
-        b=ent5.get()
-        c=ent6.get()
-        d=ent7.get()
-        e=ent8.get()
-        cur=con.cursor()
-        cur.execute("insert into users(name,email,startdate,loc) values(%s,%s,%s,%s)",(b,c,d,e))
+def book_car(con, car_id, name, email, startdate):
+    try:
+        cur = con.cursor()
+        cur.execute("SELECT user_name FROM users WHERE fname = %s AND email = %s", (name, email))
+        user_name = cur.fetchone()[0]
+        cur.execute("SELECT brand FROM cars WHERE car_id = %s", (car_id,))
+        car_name = cur.fetchone()[0]
+        cur.execute("INSERT INTO manages (car_id, username, carname, startdate) VALUES (%s, %s, %s, %s)", (car_id, user_name, car_name, startdate))
+        cur.execute("UPDATE cars SET available = 'n' WHERE car_id = %s", (car_id,))
         con.commit()
-        cur=con.cursor()
-        cur.execute("select user_id from users where name=%s and email=%s",(b,c))
-        ac=0
-        for r in cur:
-            ac=r[0]
+        st.success("Car booked successfully!")
+    except Error as e:
+        st.error(f"Error: {e}")
+
+def return_car(con, car_id, username):
+    try:
+        cur = con.cursor()
+        cur.execute("UPDATE cars SET available = 'y' WHERE car_id = %s", (car_id,))
+        cur.execute("DELETE FROM manages WHERE car_id = %s AND username = %s", (car_id, username))
         con.commit()
-        cur=con.cursor()
-        n='n'
-        cur.execute("insert into manages(user_id,car_id) values(%s,%s)",(ac,a))
-        x='n'
-        cur.execute("update cars set available=%s where car_id=%s",(x,a))
+        st.success("Car returned successfully!")
+    except Error as e:
+        st.error(f"Error: {e}")
+
+def validate_login(con, username, password):
+    try:
+        cur = con.cursor()
+        cur.execute("SELECT * FROM admin WHERE username = %s AND password = %s", (username, password))
+        admin = cur.fetchone()
+        if admin:
+            return True, "admin"
+        cur.execute("SELECT * FROM users WHERE user_name = %s AND password = %s", (username, password))
+        user = cur.fetchone()
+        if user:
+            return True, "user"
+        return False, None
+    except Error as e:
+        st.error(f"Error: {e}")
+        return False, None
+
+def add_user(con, user_name, password, fname, lname, email, phone):
+    try:
+        cur = con.cursor()
+        cur.execute("INSERT INTO users (user_name, password, fname, lname, email, phoneno) VALUES (%s, %s, %s, %s, %s, %s)", 
+                    (user_name, password, fname, lname, email, phone))
         con.commit()
-        #cur.execute("update manages set user_id = (select user_id from users natural join cars where name=%s and email=%s)",(b,c))
-        #con.commit()
-        #cur.execute("delete from users where user_id not in (select  user_id from manages)")
-        #con.commit()
-        #messagebox.showinfo("success","car booked")
-        #cur.execute("delete from manages where manages.car_id=%s in (select car_id from cars where available='n')",(a))
-        #con.commit()
-        cur.execute("delete from manages where car_id not in (select car_id from cars)")
-        con.commit()
-        cur.execute("delete from users where user_id not in (select user_id from manages)")
-        con.commit()
-        messagebox.showinfo("success","car booked")
-        carbook.delete(0,END)
-        carname.delete(0,END)
-        carmail.delete(0,END)
-        cardate.delete(0,END)
-        carloc.delete(0,END)
+        st.success("User registered successfully!")
+    except Error as e:
+        st.error(f"Error: {e}")
 
+# Streamlit app
+def main():
+    st.title("CAR RENTAL SYSTEM")
 
-    #under development!!!
-    def returncar():
-        root1=Toplevel()
-        root1.geometry("600x600")
-        root1.title("RETURN CAR")
-        lab=Label(root1,text="CARS TO BE RETURNED").pack()
-        tree1=ttk.Treeview(root1)
-        tree1["show"]="headings"
-        s=ttk.Style(root1)
-        s.theme_use("clam")
-        tree1["columns"]=("carid","userid","name","email")
-        tree1.column("carid",width=70,minwidth=70,anchor=CENTER)
-        tree1.column("userid",width=70,minwidth=70,anchor=CENTER)
-        tree1.column("name",width=150,minwidth=150,anchor=CENTER)
-        tree1.column("email",width=150,minwidth=150,anchor=CENTER)
+    # Initialize session state
+    if 'logged_in' not in st.session_state:
+        st.session_state.logged_in = False
+    if 'user_type' not in st.session_state:
+        st.session_state.user_type = None
+    if 'signup_mode' not in st.session_state:
+        st.session_state.signup_mode = False
 
-        tree1.heading("carid",text="carid",anchor=CENTER)
-        tree1.heading("userid",text="userid",anchor=CENTER)
-        tree1.heading("name",text="name",anchor=CENTER)
-        tree1.heading("email",text="email",anchor=CENTER)
+    # Create a database connection
+    con = create_connection()
 
-        cur=con.cursor()
-        cur.execute("select car_id,user_id,name,email from manages natural join users natural join cars where available='n'")
-        i=0
-        for row in cur:
-            tree1.insert('',i,text='',values=(row[0],row[1],row[2],row[3]))
-            i+=1
-        con.commit()
+    if con:
+        if not st.session_state.logged_in:
+            if not st.session_state.signup_mode:
+                username = st.text_input("Username")
+                password = st.text_input("Password", type='password')
 
-        
-        def rccar():
-            s1=bt1.get()
-            s2=bt2.get()
-            s3=bt3.get()
-            cur=con.cursor()
-            y='y'
-            cur.execute("update cars set available=%s where car_id=%s",(y,s1))
-            con.commit()
-            cur.execute("delete from manages where car_id=%s and user_id=%s",(s1,s2))
-            con.commit()
-            messagebox.showinfo("car returned","thank u come again!")
-            b1.delete(0,END)
-            b2.delete(0,END)
-            b3.delete(0,END)
-            
-        bt1=IntVar()
-        bt2=IntVar()
-        bt3=StringVar()
-        
-        
-        
-        l1=Label(root1,text="CARID").place(x=210,y=270)
-        b1=Entry(root1,textvariable=bt1)
-        b1.place(x=260,y=270)
+                if st.button("Login"):
+                    logged_in, user_type = validate_login(con, username, password)
+                    if logged_in:
+                        st.session_state.logged_in = True
+                        st.session_state.user_type = user_type
+                        st.success(f"Login successful! Welcome {username}")
+                    else:
+                        st.error("Invalid username or password")
 
-        l2=Label(root1,text="USERID").place(x=210,y=300)
-        b2=Entry(root1,textvariable=bt2)
-        b2.place(x=260,y=300)
-        
-        l3=Label(root1,text="NAME").place(x=210,y=330)
-        b3=Entry(root1,textvariable=bt3)
-        b3.place(x=260,y=330)
+                if st.button("Sign Up"):
+                    st.session_state.signup_mode = True
+            else:
+                st.subheader("Sign Up")
+                user_name = st.text_input("User Name", key="signup_user_name")
+                password = st.text_input("Password", type='password', key="signup_password")
+                fname = st.text_input("First Name", key="signup_fname")
+                lname = st.text_input("Last Name", key="signup_lname")
+                email = st.text_input("Email", key="signup_email")
+                phone = st.text_input("Phone Number", key="signup_phone")
+                
+                if st.button("Register", key="signup_register"):
+                    add_user(con, user_name, password, fname, lname, email, phone)
+                    st.session_state.signup_mode = False
+                
+                if st.button("Back to Login", key="back_to_login"):
+                    st.session_state.signup_mode = False
 
-        b4=Button(root1,text="RETURN CAR",command=rccar).place(x=250,y=370)
+        else:
+            # Create a logout button
+            if st.button("Logout"):
+                st.session_state.logged_in = False
+                st.session_state.user_type = None
 
-        vsb=ttk.Scrollbar(root1,orient="vertical")
-        vsb.configure(command=tree1.yview)
-        tree1.configure(yscrollcommand=vsb.set)
-        vsb.pack(fill=Y,side=RIGHT)
-        
-        
-        tree1.pack()    
-        root1.mainloop()
+            # Menu
+            menu = ["Add Car", "Delete Car", "View Available Cars", "Book Car", "Return Car"]
+            choice = st.sidebar.selectbox("Menu", menu, key="menu_selectbox")
 
+            if choice == "Add Car" and st.session_state.user_type == "admin":
+                st.subheader("Add Car")
+                car_id = st.text_input("Car ID", key="add_car_id")
+                brand = st.text_input("Brand", key="add_car_brand")
+                rent = st.number_input("Rent", min_value=0, step=1, key="add_car_rent")
+                if st.button("Add Car", key="add_car_button"):
+                    add_car(con, car_id, brand, rent)
 
+            elif choice == "Delete Car" and st.session_state.user_type == "admin":
+                st.subheader("Delete Car")
+                car_id = st.text_input("Car ID", key="delete_car_id")
+                if st.button("Delete Car", key="delete_car_button"):
+                    delete_car(con, car_id)
 
-    lab4=Label(frame2,text="CARID").place(x=150,y=270)
-    carbook=Entry(frame2,textvariable=ent4)
-    carbook.place(x=200,y=270)
+            elif choice == "View Available Cars":
+                st.subheader("Available Cars")
+                available_cars = get_available_cars(con)
+                if available_cars:
+                    df = pd.DataFrame(available_cars, columns=["Car ID", "Brand", "Rent"])
+                    st.table(df)
 
-    lab5=Label(frame2,text="NAME").place(x=150,y=300)
-    carname=Entry(frame2,textvariable=ent5)
-    carname.place(x=200,y=300)
+            elif choice == "Book Car" and st.session_state.user_type == "user":
+                st.subheader("Book Car")
+                car_id = st.text_input("Car ID", key="book_car_id")
+                name = st.text_input("FName [as mentioned while registering] ", key="book_car_name")
+                email = st.text_input("Email [as mentioned while registering]", key="book_car_email")
+                startdate = st.date_input("Start Date", key="book_car_startdate")
+                if st.button("Book Car", key="book_car_button"):
+                    book_car(con, car_id, name, email, startdate)
 
-    lab6=Label(frame2,text="EMAIL").place(x=150,y=330)
-    carmail=Entry(frame2,textvariable=ent6)
-    carmail.place(x=200,y=330)
+            elif choice == "Return Car" and st.session_state.user_type == "user":
+                st.subheader("Return Car")
+                car_id = st.text_input("Car ID", key="return_car_id")
+                username = st.text_input("Username [as mentioned while registering]", key="return_car_username")
+                if st.button("Return Car", key="return_car_button"):
+                    return_car(con, car_id, username)
 
-    lab7=Label(frame2,text="DATE").place(x=150,y=360)
-    cardate=Entry(frame2,textvariable=ent7)
-    cardate.place(x=200,y=360)
+            if st.session_state.user_type == "user" and (choice == "Add Car" or choice == "Delete Car"):
+                st.error("Only admins can perform this action")
 
-    lab8=Label(frame2,text="LOCATION").place(x=150,y=390)
-    carloc=Entry(frame2,textvariable=ent8)
-    carloc.place(x=220,y=390)
-
-    but3=Button(frame2,text="BOOK CAR",command=bookcar).place(x=200,y=420)
-    b10=Button(frame2,text="REFRESH",command=enter).place(x=290,y=420)
-
-    la=Label(frame3,text="RETURN CAR PORTAL").place(x=190,y=10)
-    but4=Button(frame3,text="GO TO RETURN CAR",command=returncar).place(x=200,y=100)
-
-
-    #tree.pack()
-    frame2.mainloop()
-    root.mainloop()
-
-
-
-def submit():
-    c=0
-    username=a.get()
-    password=b.get()
-    cur.execute("select *from admin")
-    for i in cur:
-        if i[0]==username and i[1]==password:
-            global check
-            c=1
-            check=1
-    if c==1:
-        messagebox.showinfo("valid!","welcome!")
-        enter()
-    else:
-        messagebox.showwarning("not valid!!","try again!")
-
-    
-r=Tk()
-r.title("LOGIN CAR RENTAL SYSTEM")
-r.geometry("500x500")
-s=ttk.Style(r)
-s.theme_use("clam")
-cur=con.cursor()
-a=StringVar()
-b=StringVar()
-t=Label(r,text="CAR RENTAL ADMIN LOGIN").pack()
-user=Label(r,text="USERNAME").place(x=150,y=150)
-g=Entry(r,textvariable=a)
-g.place(x=220,y=150)
-passw=Label(r,text="PASSWORD").place(x=150,y=180)
-h=Entry(r,textvariable=b)
-h.place(x=220,y=180)
-bo=Button(r,text="SUBMIT",command=submit)
-bo.place(x=250,y=220)
-#b5=Button(r,text="REFRESH",command=enter)
-#b5.place(x=250,y=250)
-con.commit()
-r.mainloop()
+if __name__ == '__main__':
+    main()
